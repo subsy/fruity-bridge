@@ -1,6 +1,7 @@
 import Darwin
 import EventKit
 import Foundation
+import SQLite3
 
 /// Runs before any EventKit, AppleScript or AppKit use. Fixtures are synthetic; storage is temporary.
 enum SelfTests {
@@ -28,6 +29,7 @@ enum SelfTests {
         markdown()
         dueDates()
         sorting()
+        notesDeletion()
         auth()
         httpParsing()
         identifiers()
@@ -482,6 +484,86 @@ enum SelfTests {
                               writeNotes: nil, notesWriteStatus: { "missing" })
         put.body = Data(#"{"markdown": "Hello"}"#.utf8)
         check(readOnly.handle(put).status == 400, "PUT validation comes before write availability")
+    }
+
+    /// Exercise the DELETE route against a synthetic live database. The write callback models
+    /// Notes acknowledging a command, including the silent no-op that originally returned 204.
+    static func notesDeletion() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("fruity-bridge-delete-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            var database: OpaquePointer?
+            guard sqlite3_open(directory.appendingPathComponent("NoteStore.sqlite").path, &database) == SQLITE_OK,
+                  let database else { check(false, "delete fixture opens"); return }
+            defer { sqlite3_close(database) }
+            func sql(_ statement: String) throws {
+                guard sqlite3_exec(database, statement, nil, nil, nil) == SQLITE_OK else {
+                    throw BridgeError("delete fixture SQL failed")
+                }
+            }
+            try sql("""
+                CREATE TABLE Z_METADATA (Z_UUID TEXT);
+                INSERT INTO Z_METADATA VALUES ('DELETE-TEST');
+                CREATE TABLE Z_PRIMARYKEY (Z_ENT INTEGER, Z_NAME TEXT);
+                INSERT INTO Z_PRIMARYKEY VALUES (1, 'ICFolder'), (2, 'ICNote');
+                CREATE TABLE ZICNOTEDATA (Z_PK INTEGER, Z_OPT INTEGER);
+                CREATE TABLE ZICCLOUDSYNCINGOBJECT (
+                    Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER, Z_OPT INTEGER DEFAULT 1,
+                    ZFOLDER INTEGER, ZMARKEDFORDELETION INTEGER DEFAULT 0, ZTITLE1 TEXT,
+                    ZNOTEDATA INTEGER, ZMODIFICATIONDATE1 REAL, ZFOLDERTYPE INTEGER,
+                    ZIDENTIFIER TEXT, ZOWNER INTEGER, ZTITLE2 TEXT, ZISPASSWORDPROTECTED INTEGER);
+                INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZFOLDERTYPE, ZOWNER) VALUES
+                    (1, 1, 1, 10), (2, 1, 1, 20), (3, 1, 0, 10), (4, 1, 0, 10);
+                INSERT INTO ZICCLOUDSYNCINGOBJECT
+                    (Z_PK, Z_ENT, ZFOLDER, ZTITLE1, ZMODIFICATIONDATE1, ZISPASSWORDPROTECTED)
+                    VALUES (5, 2, 3, 'Synthetic delete test', 100, 0);
+                """)
+            let store = NotesStore(container: directory)
+            var change = ""
+            var writes = 0
+            let router = Router(notes: store, reminders: nil, config: Locked(BridgeConfig()), notesAllowed: { true },
+                                writeNotes: { _ in writes += 1; if !change.isEmpty { try sql(change) } },
+                                notesWriteStatus: { "ok" })
+            let id = NotesID.make(store: "DELETE-TEST", entity: "ICNote", pk: 5)
+            check(try store.deletionFolders(noteID: id).source == NotesID.make(store: "DELETE-TEST", entity: "ICFolder", pk: 3), "DELETE uses the note's stored source folder")
+            try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZOWNER=20 WHERE Z_PK=3")
+            check(try store.deletionFolders(noteID: id).trash == NotesID.make(store: "DELETE-TEST", entity: "ICFolder", pk: 2), "DELETE selects trash by account identity")
+            try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZOWNER=10 WHERE Z_PK=3")
+            let request = HTTPRequest(method: "DELETE", rawPath: "/v1/notes/\(id)", query: [:], headers: [:], body: Data())
+            func reset() throws {
+                try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZFOLDER=3, ZMARKEDFORDELETION=0, ZMODIFICATIONDATE1=100 WHERE Z_PK=5")
+            }
+            try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZMARKEDFORDELETION=1 WHERE Z_PK=1")
+            check(router.dispatch(request).status == 422 && writes == 0, "DELETE refuses an account without active trash before writing")
+            try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZMARKEDFORDELETION=0 WHERE Z_PK=1")
+            let start = ProcessInfo.processInfo.systemUptime
+            let unchanged = router.dispatch(request)
+            let error = ((try? JSONSerialization.jsonObject(with: unchanged.body)) as? [String: Any])?["error"] as? [String: Any]
+            check(unchanged.status == 500 && error?["code"] as? String == "internal", "DELETE silent no-op returns a JSON error")
+            let elapsed = ProcessInfo.processInfo.systemUptime - start
+            check(elapsed >= 2.9 && elapsed < 5, "DELETE waits for the store but stops at the verification deadline")
+            change = "UPDATE ZICCLOUDSYNCINGOBJECT SET ZFOLDER=1 WHERE Z_PK=5"
+            check(router.dispatch(request).status == 204, "DELETE confirmed in trash returns 204 without a modifiedAt change")
+            check(try store.entry(id: id).inTrash, "DELETE success keeps the note recoverable in trash")
+            let beforeRetry = writes
+            check(router.dispatch(request).status == 422 && writes == beforeRetry, "DELETE retry never invokes permanent deletion")
+            try reset()
+            change = "UPDATE ZICCLOUDSYNCINGOBJECT SET ZMODIFICATIONDATE1=200, ZFOLDER=4 WHERE Z_PK=5"
+            check(router.dispatch(request).status == 500, "DELETE concurrent edit or move is not proof of deletion")
+            try reset()
+            change = "UPDATE ZICCLOUDSYNCINGOBJECT SET ZMARKEDFORDELETION=1 WHERE Z_PK=5"
+            check(router.dispatch(request).status == 204, "DELETE note no longer readable after write returns 204")
+            let beforeMissing = writes
+            check(router.dispatch(request).status == 404 && writes == beforeMissing, "DELETE initially missing note returns 404 without writing")
+            try reset()
+            try sql("UPDATE ZICCLOUDSYNCINGOBJECT SET ZISPASSWORDPROTECTED=1 WHERE Z_PK=5")
+            change = "UPDATE ZICCLOUDSYNCINGOBJECT SET ZFOLDER=1 WHERE Z_PK=5"
+            check(router.dispatch(request).status == 204, "DELETE locked note preserves existing behavior")
+            try reset()
+            change = "DROP TABLE ZICNOTEDATA"
+            check(router.dispatch(request).status == 500, "DELETE read failure must not count as confirmed deletion")
+        } catch { check(false, "delete fixture: \(error)") }
     }
 
     static func httpParsing() {

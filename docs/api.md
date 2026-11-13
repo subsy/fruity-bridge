@@ -181,12 +181,19 @@ A Markdown subset that round-trips through Notes HTML:
 `expectedModifiedAt` → `400`) → `200` with the full note.
 `409 conflict` if `modifiedAt` changed since `expectedModifiedAt`; `422 not_editable` if the note
 isn't editable (rich note, locked, in Trash).
-`DELETE /v1/notes/<id>` → `204` (moves to Recently Deleted, as Notes does).
+`DELETE /v1/notes/<id>` → `204` after a confirmed move to the same account's Recently Deleted
+folder, where the note remains recoverable. A note already in Recently Deleted, or an account
+without a Recently Deleted folder, answers `422 not_editable`.
+An initially missing note answers `404 not_found`.
+
+After the move, the bridge re-reads the note for up to 3 s, until it is in Recently Deleted or no
+longer readable (`GET` answers `404` for notes the store hides). If the note is still outside
+Recently Deleted at the deadline, it answers `500 internal` with a JSON error. Read errors also
+fail the request. On an error, check the note in Notes before retrying; the move may appear later.
 
 The bridge converts the Markdown to the HTML Notes accepts and runs AppleScript
 `make new note at folder id … with properties {body: html}` / `set body of note id … to html`.
-After a write it re-reads the note from the database (retrying up to 3 s for the store to update)
+After a create or update it re-reads the note from the database (retrying up to 3 s for the store to update)
 and returns it. If the write succeeded but the re-read didn't catch up, it still answers `200`/`201`
 with at least `id` and `modifiedAt: null` so the client never retries a successful write. The
-AppleScript itself times out after 45 s; clients allow writes 60 s. `DELETE` on a note already in
-Recently Deleted answers `422`.
+AppleScript itself times out after 45 s; clients allow writes 60 s.

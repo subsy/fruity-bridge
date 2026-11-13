@@ -35,10 +35,12 @@ final class NotesWriter {
             return noteId
         end set_body
 
-        on delete_note(noteId)
+        -- Notes can acknowledge `delete` without saving the deletion to its database.
+        -- An explicit move persists promptly and leaves the note recoverable in Recently Deleted.
+        on delete_note(noteId, folderId, trashFolderId)
             tell application id "com.apple.Notes"
                 with timeout of 45 seconds
-                    delete note id noteId
+                    move (note id noteId of folder id folderId) to folder id trashFolderId
                 end timeout
             end tell
             return noteId
@@ -106,5 +108,7 @@ final class NotesWriter {
     }
 
     func setBody(noteID: String, html: String) throws { _ = try call("set_body", [noteID, html]) }
-    func delete(noteID: String) throws { _ = try call("delete_note", [noteID]) }
+    func delete(noteID: String, folderID: String, trashFolderID: String) throws {
+        _ = try call("delete_note", [noteID, folderID, trashFolderID])
+    }
 }

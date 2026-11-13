@@ -288,6 +288,22 @@ final class Router {
         let entry = try notes.entry(id: id)
         // Deleting from Recently Deleted would erase the note for good; leave that to Notes itself.
         guard !entry.inTrash else { throw APIError.notEditable("This note is already in Recently Deleted.") }
-        try write { try $0.delete(noteID: entry.id) }
+        let folders = try notes.deletionFolders(noteID: entry.id)
+        try write { try $0.delete(noteID: entry.id, folderID: folders.source, trashFolderID: folders.trash) }
+        // AppleScript can acknowledge a delete without changing Notes. Wait on this HTTP
+        // thread, outside writeNotes, so Notes' main thread remains free to save the change.
+        let deadline = ProcessInfo.processInfo.systemUptime + 3
+        while true {
+            do {
+                if try notes.entry(id: entry.id).inTrash { return }
+            } catch let error as APIError where error.code == "not_found" {
+                return
+            }
+            let remaining = deadline - ProcessInfo.processInfo.systemUptime
+            guard remaining > 0 else {
+                throw APIError.internalError("Notes didn't confirm the move to Recently Deleted within 3 s. Check the note in Notes before retrying.")
+            }
+            Thread.sleep(forTimeInterval: min(0.25, remaining))
+        }
     }
 }

@@ -484,6 +484,27 @@ final class NotesStore: @unchecked Sendable {
         }
     }
 
+    /// Use the stored folder rather than the virtual Quick Notes folder, and identify trash by
+    /// type and account identity, never by its localized name or the account's display name.
+    func deletionFolders(noteID: String) throws -> (source: String, trash: String) {
+        try withDB { db, schema in
+            guard let pk = NotesID.parse(noteID, entity: "ICNote", store: schema.store),
+                  let row = try db.query("""
+                    SELECT f.Z_PK source, t.Z_PK trash FROM ZICCLOUDSYNCINGOBJECT n
+                    JOIN ZICCLOUDSYNCINGOBJECT f ON f.Z_PK = n.ZFOLDER AND f.Z_ENT = ?
+                    LEFT JOIN ZICCLOUDSYNCINGOBJECT t ON t.Z_ENT = ? AND t.ZOWNER = f.ZOWNER
+                        AND t.ZFOLDERTYPE = 1 AND coalesce(t.ZMARKEDFORDELETION, 0) = 0
+                    WHERE n.Z_PK = ? AND n.Z_ENT = ? AND coalesce(n.ZMARKEDFORDELETION, 0) = 0
+                    """, [.int(schema.ent("ICFolder")), .int(schema.ent("ICFolder")), .int(pk), .int(schema.ent("ICNote"))]).first,
+                  let source = row["source"]?.int else { throw APIError.notFound("Note not found.") }
+            guard let trash = row["trash"]?.int else {
+                throw APIError.notEditable("This note's account has no Recently Deleted folder.")
+            }
+            return (NotesID.make(store: schema.store, entity: "ICFolder", pk: source),
+                    NotesID.make(store: schema.store, entity: "ICFolder", pk: trash))
+        }
+    }
+
     func folder(id: String) throws -> FolderEntry {
         try withDB { db, schema in
             guard let pk = NotesID.parse(id, entity: "ICFolder", store: schema.store),
