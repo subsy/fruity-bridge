@@ -186,9 +186,9 @@ folder, where the note remains recoverable. A note already in Recently Deleted, 
 without a Recently Deleted folder, answers `422 not_editable`.
 An initially missing note answers `404 not_found`.
 
-After the move, the bridge re-reads the note for up to 3 s, until it is in Recently Deleted or no
-longer readable (`GET` answers `404` for notes the store hides). If the note is still outside
-Recently Deleted at the deadline, it answers `500 internal` with a JSON error. Read errors also
+After the move, the bridge re-reads the note for up to 3 s, until it is readable in Recently Deleted
+and not marked for deletion. If that cannot be confirmed at the deadline, including when the note
+is missing, it answers `500 internal` with a JSON error. Other read errors also
 fail the request. On an error, check the note in Notes before retrying; the move may appear later.
 
 The bridge converts the Markdown to the HTML Notes accepts and runs AppleScript

@@ -35,12 +35,13 @@ final class NotesWriter {
             return noteId
         end set_body
 
-        -- Notes can acknowledge `delete` without saving the deletion to its database.
-        -- An explicit move persists promptly and leaves the note recoverable in Recently Deleted.
-        on delete_note(noteId, folderId, trashFolderId)
+        -- A generic `delete` was acknowledged, but SQLite kept p2504 in its folder for minutes.
+        -- It was later observed in the trash folder with ZMARKEDFORDELETION=1.
+        -- Use an explicit move and verify a recoverable note in Recently Deleted.
+        on delete_note(noteId, trashFolderId)
             tell application id "com.apple.Notes"
                 with timeout of 45 seconds
-                    move (note id noteId of folder id folderId) to folder id trashFolderId
+                    move note id noteId to folder id trashFolderId
                 end timeout
             end tell
             return noteId
@@ -108,7 +109,7 @@ final class NotesWriter {
     }
 
     func setBody(noteID: String, html: String) throws { _ = try call("set_body", [noteID, html]) }
-    func delete(noteID: String, folderID: String, trashFolderID: String) throws {
-        _ = try call("delete_note", [noteID, folderID, trashFolderID])
+    func delete(noteID: String, trashFolderID: String) throws {
+        _ = try call("delete_note", [noteID, trashFolderID])
     }
 }
