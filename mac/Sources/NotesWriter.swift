@@ -35,8 +35,8 @@ final class NotesWriter {
             return noteId
         end set_body
 
-        -- A generic `delete` was acknowledged, but SQLite kept p2504 in its folder for minutes.
-        -- It was later observed in the trash folder with ZMARKEDFORDELETION=1.
+        -- A generic `delete` was acknowledged, but SQLite kept the note in its folder for minutes;
+        -- it later showed up in the trash folder already marked for deletion (ZMARKEDFORDELETION=1).
         -- Use an explicit move and verify a recoverable note in Recently Deleted.
         on delete_note(noteId, trashFolderId)
             tell application id "com.apple.Notes"

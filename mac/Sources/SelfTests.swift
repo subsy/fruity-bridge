@@ -612,7 +612,8 @@ enum SelfTests {
         let elapsed = Date().timeIntervalSince(started)
         stop.set(true)
         if case .refuse(let response) = outcome { check(response.status == 408, "slow headers → 408") } else { check(false, "slow headers refused") }
-        check(elapsed >= 0.55, "header timeout waits until the deadline (\(String(format: "%.2f", elapsed)) s)")
+        // A per-read timeout would only fire after the ~11 s trickle ends; 5 s leaves room for a loaded machine.
+        check(elapsed >= 0.55 && elapsed < 5, "header deadline is overall (\(String(format: "%.2f", elapsed)) s)")
 
         // A complete head followed by its body reads through the same reader.
         var pair2: [Int32] = [0, 0]
@@ -632,11 +633,11 @@ enum SelfTests {
     }
 
     static func identifiers() {
-        let store = "FF25BBBD-D870-49C1-8723-102098FCFBB3"
+        let store = "A1B2C3D4-0000-4000-8000-000000000001"
         let id = NotesID.make(store: store, entity: "ICNote", pk: 345)
-        check(id == "x-coredata://FF25BBBD-D870-49C1-8723-102098FCFBB3/ICNote/p345", "AppleScript id format")
+        check(id == "x-coredata://A1B2C3D4-0000-4000-8000-000000000001/ICNote/p345", "AppleScript id format")
         check(NotesID.parse(id, entity: "ICNote", store: store) == 345, "id parses")
-        check(NotesID.parse("x-coredata:/FF25BBBD-D870-49C1-8723-102098FCFBB3/ICNote/p345", entity: "ICNote", store: store) == 345, "collapsed slashes accepted")
+        check(NotesID.parse("x-coredata:/A1B2C3D4-0000-4000-8000-000000000001/ICNote/p345", entity: "ICNote", store: store) == 345, "collapsed slashes accepted")
         check(NotesID.parse(id, entity: "ICFolder", store: store) == nil, "entity mismatch rejected")
         check(NotesID.parse("x-coredata://OTHER/ICNote/p345", entity: "ICNote", store: store) == nil, "other store rejected")
         check(NotesID.parse("x-coredata://\(store)/ICNote/p0", entity: "ICNote", store: store) == nil, "invalid pk rejected")
