@@ -1,0 +1,316 @@
+/* Reminders — app styles on top of libadwaita. */
+
+.c-accent {
+  --list-color: var(--accent-bg-color);
+  --list-tint: color-mix(in srgb, var(--accent-bg-color) 14%, transparent);
+}
+
+.c-neutral {
+  --list-color: var(--view-fg-color);
+  --list-tint: color-mix(in srgb, var(--view-fg-color) 10%, transparent);
+}
+
+.c-muted {
+  --list-color: #8e8e93;
+  --list-tint: rgba(142, 142, 147, 0.14);
+}
+
+/* libadwaita's status page title sizes, restated so they hold under a GTK_THEME override. */
+statuspage .title {
+  font-weight: 800;
+  font-size: 181%;
+}
+
+statuspage.compact .title {
+  font-size: 136%;
+}
+
+/* ---------- Sidebar: smart list tiles ---------- */
+
+.smart-tiles {
+  margin: 6px 12px 0 12px;
+}
+
+button.smart-tile {
+  padding: 9px 10px 8px 10px;
+  border-radius: 12px;
+  min-height: 0;
+  background-color: var(--card-bg-color);
+  box-shadow: 0 0 0 1px var(--border-color), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+button.smart-tile:hover {
+  background-color: color-mix(in srgb, var(--card-bg-color) 92%, currentColor);
+}
+
+button.smart-tile .tile-icon {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 999px;
+  background-color: var(--tile-color);
+  color: white;
+}
+
+button.smart-tile label.tile-icon {
+  font-weight: 800;
+  font-size: 12px;
+  font-feature-settings: "tnum";
+}
+
+button.smart-tile .tile-count {
+  font-size: 24px;
+  font-weight: 800;
+  font-feature-settings: "tnum";
+}
+
+button.smart-tile .tile-title {
+  font-weight: 700;
+  opacity: 0.62;
+}
+
+button.smart-tile.selected {
+  background-color: var(--tile-color);
+  color: white;
+  box-shadow: none;
+}
+
+button.smart-tile.selected .tile-icon {
+  background-color: white;
+  color: var(--tile-color);
+}
+
+button.smart-tile.selected .tile-title {
+  opacity: 0.92;
+}
+
+.tile-today { --tile-color: var(--accent-bg-color); }
+.tile-scheduled { --tile-color: #e5484d; }
+.tile-all { --tile-color: #4a4a50; }
+.tile-completed { --tile-color: #8e8e93; }
+
+@media (prefers-color-scheme: dark) {
+  .tile-all { --tile-color: #6e6e76; }
+  .tile-completed { --tile-color: #6a6a70; }
+}
+
+/* ---------- Sidebar: lists ---------- */
+
+.sidebar-heading {
+  margin: 20px 18px 4px 18px;
+  font-weight: 700;
+  font-size: 0.9em;
+  opacity: 0.6;
+}
+
+.list-icon {
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 999px;
+  background-color: var(--list-color);
+  color: white;
+}
+
+.list-count {
+  font-feature-settings: "tnum";
+  opacity: 0.55;
+}
+
+.navigation-sidebar > row:selected .list-count {
+  opacity: 0.8;
+}
+
+/* ---------- Content ---------- */
+
+.content-view {
+  background-color: var(--view-bg-color);
+}
+
+.view-header {
+  margin-bottom: 6px;
+}
+
+.view-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--list-color);
+}
+
+.view-count {
+  font-size: 26px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  color: var(--list-color);
+  opacity: 0.85;
+}
+
+.section-title {
+  margin-top: 22px;
+  margin-bottom: 2px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--list-color, inherit);
+}
+
+.section-title.overdue {
+  color: var(--destructive-color);
+}
+
+list.reminders {
+  background: none;
+}
+
+list.reminders > row {
+  padding: 0 6px;
+  border-radius: 10px;
+  outline-offset: -2px;
+}
+
+list.reminders > row:hover {
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+list.reminders > row:active {
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.reminder-text {
+  padding: 10px 0 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+list.reminders > row:last-child .reminder-text {
+  border-bottom-color: transparent;
+}
+
+.reminder-title {
+  font-size: 1.04em;
+}
+
+.reminder-title.done,
+.reminder-notes.done {
+  text-decoration-line: line-through;
+  opacity: 0.45;
+}
+
+.reminder-title.completed {
+  opacity: 0.5;
+}
+
+.priority {
+  color: color-mix(in srgb, var(--list-color) 82%, var(--view-fg-color));
+  font-weight: 800;
+}
+
+.reminder-notes {
+  opacity: 0.6;
+}
+
+.reminder-meta {
+  opacity: 0.85;
+}
+
+.due-chip {
+  font-size: 0.86em;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+  font-feature-settings: "tnum";
+}
+
+.due-chip.overdue {
+  color: var(--destructive-color);
+  background-color: color-mix(in srgb, var(--destructive-bg-color) 13%, transparent);
+}
+
+.meta-icon {
+  opacity: 0.55;
+}
+
+.list-badge {
+  font-size: 0.86em;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--list-color) 78%, var(--view-fg-color));
+}
+
+/* The round completion button, tinted in the list colour. */
+button.reminder-check {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  margin: 9px 0 0 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 32%, transparent);
+  transition: box-shadow 160ms ease-out;
+}
+
+button.reminder-check:disabled {
+  opacity: 0.45;
+}
+
+button.reminder-check:hover {
+  box-shadow: inset 0 0 0 1.5px var(--list-color);
+  background-color: var(--list-tint);
+}
+
+button.reminder-check .check-dot {
+  min-width: 0;
+  min-height: 0;
+  margin: 11px;
+  border-radius: 999px;
+  background-color: var(--list-color);
+  opacity: 0;
+  transition: margin 180ms ease-out, opacity 180ms ease-out;
+}
+
+button.reminder-check.checked {
+  box-shadow: inset 0 0 0 1.5px var(--list-color);
+}
+
+button.reminder-check.checked .check-dot {
+  margin: 4px;
+  opacity: 1;
+}
+
+/* Inline "New Reminder" row. */
+.new-reminder {
+  padding: 0 6px;
+}
+
+.new-reminder .add-icon {
+  min-width: 22px;
+  min-height: 22px;
+  border-radius: 999px;
+  color: var(--list-color);
+}
+
+.new-reminder entry {
+  background: none;
+  box-shadow: none;
+  outline: none;
+  padding-left: 0;
+  min-height: 40px;
+  font-size: 1.04em;
+}
+
+/* ---------- Editor ---------- */
+
+.notes-view {
+  background: none;
+  padding: 12px;
+}
+
+.notes-placeholder {
+  padding: 12px 12px;
+  opacity: 0.5;
+}
+
+.date-quick button {
+  padding: 4px 10px;
+}
+
+.time-spin {
+  font-feature-settings: "tnum";
+}

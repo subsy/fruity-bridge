@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Notes
+GenericName=Notes
+Comment=Read, search and edit your Apple Notes
+Exec=fruity-notes
+Icon=com.plgeek.FruityNotes
+Terminal=false
+Categories=Office;Utility;GTK;
+Keywords=Apple;iCloud;Notes;Memo;Jot;
+StartupNotify=true
+StartupWMClass=com.plgeek.FruityNotes

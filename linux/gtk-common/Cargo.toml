@@ -1,0 +1,11 @@
+[package]
+name = "fruity-bridge-gtk"
+version = "0.1.0"
+edition = "2024"
+description = "GTK pieces shared by the Fruity Bridge apps: connection preferences, background work, events"
+
+[dependencies]
+adw = { version = "0.9.2", package = "libadwaita", features = ["v1_8"] }
+fruity-bridge-client = { version = "0.1.0", path = "../client" }
+async-channel = "2.5.0"
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_20"] }

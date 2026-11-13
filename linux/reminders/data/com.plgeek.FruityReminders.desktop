@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Reminders
+GenericName=To-Do List
+Comment=Your Apple Reminders, served by your Mac over Tailscale
+Exec=fruity-reminders
+Icon=com.plgeek.FruityReminders
+Terminal=false
+Categories=GNOME;GTK;Office;ProjectManagement;
+Keywords=todo;tasks;reminders;apple;icloud;checklist;
+StartupNotify=true
+DBusActivatable=false
+SingleMainWindow=true

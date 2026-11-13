@@ -1,0 +1,58 @@
+# Maintainer: Ben <ben@plgeek.com>
+pkgbase=fruity-bridge-apps
+pkgname=(fruity-bridge-reminders fruity-bridge-notes)
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Apple Reminders and Notes on Linux, served by a Mac over Tailscale"
+arch=(x86_64 aarch64)
+url="https://github.com/subsy/fruity-bridge"
+license=(MIT)
+depends=(gtk4 libadwaita glibc gcc-libs)
+makedepends=(cargo git)
+options=(!lto !debug)
+source=("fruity-bridge::git+https://github.com/subsy/fruity-bridge.git")
+sha256sums=(SKIP)
+
+pkgver() {
+  cd fruity-bridge
+  printf "0.1.0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd fruity-bridge
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd fruity-bridge
+  export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR=target
+  export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$srcdir=/build"
+  cargo build --frozen --release -p fruity-reminders -p fruity-notes
+}
+
+check() {
+  cd fruity-bridge
+  export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR=target
+  cargo test --frozen --release -p fruity-reminders -p fruity-notes
+}
+
+_install_app() {
+  local bin=$1 id=$2 dir=$3
+  install -Dm755 "target/release/$bin" "$pkgdir/usr/bin/$bin"
+  install -Dm644 "linux/$dir/data/$id.desktop" "$pkgdir/usr/share/applications/$id.desktop"
+  install -Dm644 "linux/$dir/data/$id.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$id.svg"
+  install -Dm644 "linux/$dir/data/$id-symbolic.svg" "$pkgdir/usr/share/icons/hicolor/symbolic/apps/$id-symbolic.svg"
+}
+
+package_fruity-bridge-reminders() {
+  pkgdesc="Apple Reminders for Linux (GTK4/libadwaita), via your Mac over Tailscale"
+  cd fruity-bridge
+  _install_app fruity-reminders com.plgeek.FruityReminders reminders
+}
+
+package_fruity-bridge-notes() {
+  pkgdesc="Apple Notes for Linux (GTK4/libadwaita), via your Mac over Tailscale"
+  cd fruity-bridge
+  _install_app fruity-notes com.plgeek.FruityNotes notes
+}

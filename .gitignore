@@ -1,0 +1,4 @@
+/target
+/mac/build
+*.dmg
+__pycache__/
